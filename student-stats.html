@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生成绩统计</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 40px 16px;
+        }
+
+        .container { width: 100%; max-width: 560px; }
+
+        h1 {
+            text-align: center;
+            font-size: 24px;
+            color: #1a1a2e;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        /* ---- 录入区 ---- */
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-row input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-row input:focus { border-color: #4f6ef7; }
+        .input-row input.input-error { border-color: #e74c3c; background: #fff5f5; }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-add { background: #4f6ef7; color: #fff; }
+        .btn-add:hover { background: #3d5bd9; }
+        .btn-add:active { transform: scale(0.97); }
+
+        .btn-save { background: #27ae60; color: #fff; }
+        .btn-save:hover { background: #1e8449; }
+        .btn-save:active { transform: scale(0.97); }
+
+        .btn-clear { background: #fff; color: #e74c3c; border: 1.5px solid #e74c3c; }
+        .btn-clear:hover { background: #fff5f5; }
+
+        .btn-sm {
+            padding: 4px 12px;
+            font-size: 13px;
+            border-radius: 6px;
+        }
+
+        .btn-outline {
+            background: #fff;
+            color: #4f6ef7;
+            border: 1.5px solid #4f6ef7;
+        }
+        .btn-outline:hover { background: #f5f7ff; }
+
+        .btn-danger-sm {
+            background: #fff;
+            color: #e74c3c;
+            border: 1.5px solid #e74c3c;
+            padding: 4px 12px;
+            font-size: 13px;
+            border-radius: 6px;
+        }
+        .btn-danger-sm:hover { background: #fff5f5; }
+
+        .btn-actions {
+            display: none;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .btn-actions.visible { display: flex; }
+
+        /* ---- 学生标签 ---- */
+        .student-list {
+            margin-top: 12px;
+            min-height: 40px;
+        }
+
+        .student-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #f5f6fa;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin: 4px 6px 4px 0;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        .student-tag .name  { color: #333; }
+        .student-tag .score { color: #4f6ef7; font-weight: 600; }
+        .student-tag .del   {
+            cursor: pointer;
+            color: #bbb;
+            font-size: 16px;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+        .student-tag .del:hover { color: #e74c3c; }
+
+        .empty-placeholder {
+            text-align: center;
+            color: #bbb;
+            font-size: 14px;
+            padding: 20px 0;
+        }
+
+        /* ---- 统计结果 ---- */
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .stat-row:last-child { border-bottom: none; }
+
+        .stat-label  { font-size: 14px; color: #888; }
+        .stat-value  { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+        .stat-value.top    { color: #27ae60; }
+        .stat-value.bottom { color: #e74c3c; }
+        .stat-names  { font-size: 13px; color: #666; margin-top: 2px; }
+
+        .empty-hint {
+            text-align: center;
+            color: #ccc;
+            padding: 24px 0;
+            font-size: 14px;
+        }
+
+        /* ---- 成绩明细表格 ---- */
+        .table-wrap {
+            max-height: 360px;
+            overflow-y: auto;
+            margin-top: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        thead th {
+            background: #f8f9fb;
+            color: #666;
+            font-weight: 600;
+            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 2px solid #e8e8e8;
+            position: sticky;
+            top: 0;
+        }
+
+        tbody td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #333;
+        }
+
+        tbody tr:hover { background: #fafbfc; }
+
+        tbody tr.row-top { background: #f0fdf4; }    /* 最高分高亮绿 */
+        tbody tr.row-bottom { background: #fef2f2; }  /* 最低分高亮红 */
+
+        .col-rank  { width: 52px; color: #999; }
+        .col-name  { }
+        .col-score { width: 80px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+        /* ---- 错误提示 ---- */
+        .error-toast {
+            display: none;
+            background: #fff0f0;
+            color: #c0392b;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+        .error-toast.visible { display: block; }
+
+        /* ---- 成功提示 ---- */
+        .success-toast {
+            display: none;
+            background: #eafaf1;
+            color: #1e8449;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-top: 8px;
+            animation: fadeIn 0.3s ease;
+        }
+        .success-toast.visible { display: block; }
+
+        /* ---- 历史记录 ---- */
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            transition: background 0.2s;
+        }
+        .history-item:hover { background: #fafbfc; }
+
+        .history-info .history-time {
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+        }
+        .history-info .history-meta {
+            font-size: 12px;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .history-empty {
+            text-align: center;
+            color: #ccc;
+            padding: 20px 0;
+            font-size: 14px;
+        }
+
+        /* ---- 响应式 ---- */
+        @media (max-width: 480px) {
+            .input-row { flex-direction: column; }
+            .btn-actions { flex-direction: column; }
+            .btn-actions .btn { width: 100%; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📊 学生成绩统计</h1>
+
+    <!-- ============ 录入区 ============ -->
+    <div class="card">
+        <div class="card-title">录入学生</div>
+        <div class="input-row">
+            <input type="text" id="nameInput"  placeholder="姓名" autocomplete="off">
+            <input type="text" id="scoreInput" placeholder="成绩" autocomplete="off">
+            <button class="btn btn-add" id="addBtn">+ 添加</button>
+        </div>
+        <div class="error-toast" id="errorToast"></div>
+        <div class="success-toast" id="successToast"></div>
+        <div class="student-list" id="studentList"></div>
+        <div class="btn-actions" id="btnActions">
+            <button class="btn btn-save" id="saveBtn">💾 保存记录</button>
+            <button class="btn btn-clear" id="clearBtn">清空全部</button>
+        </div>
+    </div>
+
+    <!-- ============ 统计区 ============ -->
+    <div class="card">
+        <div class="card-title">统计结果</div>
+        <div id="statsPanel">
+            <div class="empty-hint">录入学生后自动显示统计</div>
+        </div>
+    </div>
+
+    <!-- ============ 成绩明细表 ============ -->
+    <div class="card" id="tableCard">
+        <div class="card-title">📋 成绩明细表</div>
+        <div id="tablePanel">
+            <div class="empty-hint">录入学生后自动生成表格</div>
+        </div>
+    </div>
+
+    <!-- ============ 历史记录 ============ -->
+    <div class="card">
+        <div class="card-title">📁 历史记录</div>
+        <div id="historyPanel">
+            <div class="history-empty">暂无保存的记录</div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    "use strict";
+
+    /* ================================================================
+       常量
+       ================================================================ */
+    var STORAGE_KEY = "student_score_history";
+
+    /* ================================================================
+       数据
+       ================================================================ */
+    var students = [];   // {name: string, score: number}[]
+
+    /* ================================================================
+       DOM 引用
+       ================================================================ */
+    var nameInput    = document.getElementById("nameInput");
+    var scoreInput   = document.getElementById("scoreInput");
+    var addBtn       = document.getElementById("addBtn");
+    var saveBtn      = document.getElementById("saveBtn");
+    var clearBtn     = document.getElementById("clearBtn");
+    var studentList  = document.getElementById("studentList");
+    var errorToast   = document.getElementById("errorToast");
+    var successToast = document.getElementById("successToast");
+    var statsPanel   = document.getElementById("statsPanel");
+    var tablePanel   = document.getElementById("tablePanel");
+    var historyPanel = document.getElementById("historyPanel");
+    var btnActions   = document.getElementById("btnActions");
+
+    /* ================================================================
+       事件绑定
+       ================================================================ */
+    addBtn.addEventListener("click", addStudent);
+    saveBtn.addEventListener("click", saveRecord);
+    clearBtn.addEventListener("click", clearAll);
+
+    // 回车快捷操作
+    nameInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { scoreInput.focus(); }
+    });
+    scoreInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { addStudent(); }
+    });
+
+    // 初始渲染
+    renderStudentList();
+    loadHistory();
+
+    /* ================================================================
+       核心逻辑
+       ================================================================ */
+
+    /** 添加一名学生 */
+    function addStudent() {
+        hideError();
+        hideSuccess();
+        clearInputErrors();
+
+        var name     = nameInput.value.trim();
+        var scoreStr = scoreInput.value.trim();
+
+        if (!name) {
+            showError("姓名不能为空");
+            markError(nameInput);
+            return;
+        }
+
+        if (!scoreStr) {
+            showError("成绩不能为空");
+            markError(scoreInput);
+            return;
+        }
+
+        var score = Number(scoreStr);
+        if (isNaN(score)) {
+            showError("成绩必须为数字");
+            markError(scoreInput);
+            return;
+        }
+
+        students.push({ name: name, score: score });
+        renderAll();
+
+        nameInput.value = "";
+        scoreInput.value = "";
+        nameInput.focus();
+    }
+
+    /** 删除一名学生（按索引） */
+    function removeStudent(index) {
+        students.splice(index, 1);
+        renderAll();
+    }
+
+    /** 清空全部学生 */
+    function clearAll() {
+        if (students.length === 0) { return; }
+        students.length = 0;
+        renderAll();
+        nameInput.focus();
+    }
+
+    /* ================================================================
+       渲染总入口 —— 保证标签/统计/表格同步
+       ================================================================ */
+    function renderAll() {
+        renderStudentList();
+        renderStats();
+        renderTable();
+    }
+
+    /* ================================================================
+       渲染：学生标签列表
+       ================================================================ */
+    function renderStudentList() {
+        if (students.length === 0) {
+            studentList.innerHTML = '<div class="empty-placeholder">暂无学生，请在上方录入</div>';
+            btnActions.classList.remove("visible");
+            return;
+        }
+
+        var html = "";
+        for (var i = 0; i < students.length; i++) {
+            var s = students[i];
+            html +=
+                '<span class="student-tag">' +
+                    '<span class="name">'  + escapeHtml(s.name)  + '</span>' +
+                    '<span class="score">' + s.score             + '</span>' +
+                    '<span class="del" data-idx="' + i + '" title="删除">×</span>' +
+                '</span>';
+        }
+        studentList.innerHTML = html;
+        btnActions.classList.add("visible");
+
+        // 重新绑定删除事件
+        var delSpans = studentList.querySelectorAll(".del");
+        for (var j = 0; j < delSpans.length; j++) {
+            delSpans[j].addEventListener("click", function () {
+                var idx = Number(this.getAttribute("data-idx"));
+                removeStudent(idx);
+            });
+        }
+    }
+
+    /* ================================================================
+       渲染：统计面板
+       ================================================================ */
+    function renderStats() {
+        if (students.length === 0) {
+            statsPanel.innerHTML = '<div class="empty-hint">录入学生后自动显示统计</div>';
+            return;
+        }
+
+        var scores = [];
+        for (var i = 0; i < students.length; i++) {
+            scores.push(students[i].score);
+        }
+
+        var maxScore = Math.max.apply(null, scores);
+        var minScore = Math.min.apply(null, scores);
+        var sum = 0;
+        for (var k = 0; k < scores.length; k++) { sum += scores[k]; }
+        var avgScore = sum / scores.length;
+
+        var topNames    = [];
+        var bottomNames = [];
+        for (var m = 0; m < students.length; m++) {
+            if (students[m].score === maxScore) { topNames.push(students[m].name); }
+            if (students[m].score === minScore) { bottomNames.push(students[m].name); }
+        }
+
+        statsPanel.innerHTML =
+            '<div class="stat-row">' +
+                '<span class="stat-label">总人数</span>' +
+                '<span class="stat-value">' + students.length + '</span>' +
+            '</div>' +
+            '<div class="stat-row">' +
+                '<div>' +
+                    '<span class="stat-label">🏆 最高分</span>' +
+                    '<div class="stat-names">' + topNames.map(escapeHtml).join("、") + '</div>' +
+                '</div>' +
+                '<span class="stat-value top">' + formatScore(maxScore) + '</span>' +
+            '</div>' +
+            '<div class="stat-row">' +
+                '<div>' +
+                    '<span class="stat-label">最低分</span>' +
+                    '<div class="stat-names">' + bottomNames.map(escapeHtml).join("、") + '</div>' +
+                '</div>' +
+                '<span class="stat-value bottom">' + formatScore(minScore) + '</span>' +
+            '</div>' +
+            '<div class="stat-row">' +
+                '<span class="stat-label">📈 平均分</span>' +
+                '<span class="stat-value">' + avgScore.toFixed(2) + '</span>' +
+            '</div>';
+    }
+
+    /* ================================================================
+       渲染：成绩明细表格（新功能 1）
+       ================================================================ */
+    function renderTable() {
+        if (students.length === 0) {
+            tablePanel.innerHTML = '<div class="empty-hint">录入学生后自动生成表格</div>';
+            return;
+        }
+
+        // 按成绩降序排列
+        var sorted = students.slice().sort(function (a, b) {
+            return b.score - a.score;
+        });
+
+        // 确定最高/最低分（用于行高亮）
+        var scores = [];
+        for (var i = 0; i < students.length; i++) {
+            scores.push(students[i].score);
+        }
+        var maxScore = Math.max.apply(null, scores);
+        var minScore = Math.min.apply(null, scores);
+
+        var rows = "";
+        for (var r = 0; r < sorted.length; r++) {
+            var rowClass = "";
+            if (sorted[r].score === maxScore) {
+                rowClass = ' class="row-top"';
+            } else if (sorted[r].score === minScore) {
+                rowClass = ' class="row-bottom"';
+            }
+
+            // 处理并列排名
+            var rank;
+            if (r > 0 && sorted[r].score === sorted[r - 1].score) {
+                rank = "↑";  // 与上一行同分，用箭头表示并列
+            } else {
+                rank = String(r + 1);
+            }
+
+            rows +=
+                '<tr' + rowClass + '>' +
+                    '<td class="col-rank">' + rank + '</td>' +
+                    '<td class="col-name">' + escapeHtml(sorted[r].name) + '</td>' +
+                    '<td class="col-score">' + formatScore(sorted[r].score) + '</td>' +
+                '</tr>';
+        }
+
+        tablePanel.innerHTML =
+            '<div class="table-wrap">' +
+                '<table>' +
+                    '<thead><tr>' +
+                        '<th class="col-rank">排名</th>' +
+                        '<th class="col-name">姓名</th>' +
+                        '<th class="col-score">成绩</th>' +
+                    '</tr></thead>' +
+                    '<tbody>' + rows + '</tbody>' +
+                '</table>' +
+            '</div>';
+    }
+
+    /* ================================================================
+       保存记录（新功能 2：localStorage 持久化）
+       ================================================================ */
+    function saveRecord() {
+        if (students.length === 0) {
+            showError("没有学生数据可以保存");
+            return;
+        }
+
+        // 读取现有历史
+        var history = loadHistoryFromStorage();
+
+        // 新建一条记录
+        var now = new Date();
+        var record = {
+            id: Date.now(),                        // 唯一 ID（毫秒时间戳）
+            time: formatDateTime(now),             // 可读时间
+            students: students.slice(),            // 深拷贝当前数据
+            stats: {
+                count: students.length,
+                max:  Math.max.apply(null, students.map(function(s){return s.score;})),
+                min:  Math.min.apply(null, students.map(function(s){return s.score;})),
+                avg:  students.reduce(function(a,b){return a+b.score;},0) / students.length
+            }
+        };
+
+        history.unshift(record);  // 最新在前
+
+        // 最多保留 50 条
+        if (history.length > 50) { history.length = 50; }
+
+        saveHistoryToStorage(history);
+        renderHistory(history);
+        showSuccess("已保存！共 " + record.students.length + " 名学生");
+    }
+
+    /** 加载某条历史记录到当前编辑区 */
+    function loadRecord(id) {
+        var history = loadHistoryFromStorage();
+        for (var i = 0; i < history.length; i++) {
+            if (history[i].id === id) {
+                // 替换当前数据
+                students.length = 0;
+                for (var j = 0; j < history[i].students.length; j++) {
+                    students.push({
+                        name:  history[i].students[j].name,
+                        score: history[i].students[j].score
+                    });
+                }
+                renderAll();
+                showSuccess("已加载记录：" + history[i].time);
+                return;
+            }
+        }
+    }
+
+    /** 删除某条历史记录 */
+    function deleteRecord(id) {
+        var history = loadHistoryFromStorage();
+        var newHistory = [];
+        for (var i = 0; i < history.length; i++) {
+            if (history[i].id !== id) {
+                newHistory.push(history[i]);
+            }
+        }
+        saveHistoryToStorage(newHistory);
+        renderHistory(newHistory);
+    }
+
+    /* ================================================================
+       localStorage 读写
+       ================================================================ */
+    function loadHistoryFromStorage() {
+        try {
+            var raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) { return []; }
+            var data = JSON.parse(raw);
+            // 基本校验：必须是数组
+            if (Object.prototype.toString.call(data) !== "[object Array]") {
+                return [];
+            }
+            return data;
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function saveHistoryToStorage(history) {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+        } catch (e) {
+            showError("保存失败：本地存储空间不足，请清理旧记录");
+        }
+    }
+
+    /** 初始化 + 每次操作后刷新历史面板 */
+    function loadHistory() {
+        var history = loadHistoryFromStorage();
+        // 只展示，不渲染表格（避免覆盖当前数据）
+        renderHistory(history);
+    }
+
+    function renderHistory(history) {
+        if (!history || history.length === 0) {
+            historyPanel.innerHTML = '<div class="history-empty">暂无保存的记录</div>';
+            return;
+        }
+
+        var html = "";
+        for (var i = 0; i < history.length; i++) {
+            var h = history[i];
+            html +=
+                '<div class="history-item">' +
+                    '<div class="history-info">' +
+                        '<div class="history-time">' + escapeHtml(h.time) + '</div>' +
+                        '<div class="history-meta">' +
+                            h.stats.count + ' 人 · ' +
+                            '最高 ' + formatScore(h.stats.max) + ' · ' +
+                            '最低 ' + formatScore(h.stats.min) + ' · ' +
+                            '平均 ' + h.stats.avg.toFixed(2) +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="history-actions">' +
+                        '<button class="btn btn-sm btn-outline" data-load="' + h.id + '">载入</button>' +
+                        '<button class="btn btn-danger-sm" data-del="' + h.id + '">删除</button>' +
+                    '</div>' +
+                '</div>';
+        }
+        historyPanel.innerHTML = html;
+
+        // 绑定「载入」按钮
+        var loadBtns = historyPanel.querySelectorAll("[data-load]");
+        for (var j = 0; j < loadBtns.length; j++) {
+            loadBtns[j].addEventListener("click", function () {
+                loadRecord(Number(this.getAttribute("data-load")));
+            });
+        }
+
+        // 绑定「删除」按钮
+        var delBtns = historyPanel.querySelectorAll("[data-del]");
+        for (var k = 0; k < delBtns.length; k++) {
+            delBtns[k].addEventListener("click", function () {
+                var id = Number(this.getAttribute("data-del"));
+                deleteRecord(id);
+            });
+        }
+    }
+
+    /* ================================================================
+       工具函数
+       ================================================================ */
+
+    /** 格式化分数：整数不显示小数 */
+    function formatScore(n) {
+        if (n === Math.floor(n) && isFinite(n)) {
+            return String(n);
+        }
+        return n.toFixed(2);
+    }
+
+    /** 转义 HTML 特殊字符 */
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g,  "&amp;")
+            .replace(/</g,  "&lt;")
+            .replace(/>/g,  "&gt;")
+            .replace(/"/g,  "&quot;")
+            .replace(/'/g,  "&#39;");
+    }
+
+    /** 格式化日期为可读字符串 */
+    function formatDateTime(d) {
+        var y = d.getFullYear();
+        var M = pad(d.getMonth() + 1);
+        var D = pad(d.getDate());
+        var h = pad(d.getHours());
+        var m = pad(d.getMinutes());
+        var s = pad(d.getSeconds());
+        return y + "-" + M + "-" + D + " " + h + ":" + m + ":" + s;
+    }
+
+    function pad(n) {
+        return n < 10 ? "0" + n : String(n);
+    }
+
+    /* ---- 错误提示 ---- */
+    function showError(msg) {
+        errorToast.textContent = msg;
+        errorToast.classList.add("visible");
+        // 3 秒后自动消失
+        clearTimeout(errorToast._timer);
+        errorToast._timer = setTimeout(hideError, 3000);
+    }
+
+    function hideError() {
+        errorToast.classList.remove("visible");
+    }
+
+    /** 成功提示 */
+    function showSuccess(msg) {
+        successToast.textContent = msg;
+        successToast.classList.add("visible");
+        clearTimeout(successToast._timer);
+        successToast._timer = setTimeout(hideSuccess, 2500);
+    }
+
+    function hideSuccess() {
+        successToast.classList.remove("visible");
+    }
+
+    function markError(el) {
+        el.classList.add("input-error");
+        el.focus();
+        el.addEventListener("input", function clear() {
+            el.classList.remove("input-error");
+            hideError();
+            el.removeEventListener("input", clear);
+        });
+    }
+
+    function clearInputErrors() {
+        nameInput.classList.remove("input-error");
+        scoreInput.classList.remove("input-error");
+    }
+})();
+</script>
+</body>
+</html>
